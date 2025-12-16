@@ -129,7 +129,6 @@ T = {
     "integral_setup": tr("Masukkan fungsi f(x) dan batas integral [a, b]:", "Enter function f(x) and integration bounds [a, b]:"),
     "integral_a": "Batas Bawah (a)",
     "integral_b": "Batas Atas (b)",
-    "area_setup": tr("Masukkan dimensi (misal: panjang (p) dan lebar (l), pisahkan dengan koma):", "Enter dimensions (e.g.: length (l) and width (w), separate by comma):"),
 }
 
 # Optimization Problem Choices
@@ -295,408 +294,85 @@ def plot_optimization(f_sym, x_opt, f_max, label='Fungsi Optimasi'):
     else:
         st.pyplot(fig)
 
-
 # =========================================================
-# SIDEBAR NAVIGATION
-# =========================================================
-
-st.sidebar.markdown("## ⚙️ KONFIGURASI PREMIUM")
-
-# --- FITUR CONTENT THEME ---
-selected_theme = st.sidebar.radio(
-    tr("Content Theme", "Content Theme"), 
-    ["Light", "Dark"], 
-    index=0 if st.session_state['theme'] == 'Light' else 1
-)
-
-if selected_theme != st.session_state['theme']:
-    st.session_state['theme'] = selected_theme
-    st.rerun() 
-# --- AKHIR FITUR CONTENT THEME ---
-
-## fi
-# NEW TAB INCLUSION
-selected_tab_title = st.sidebar.radio("Pilih Modul", [T["tab_func"], T["tab_3d"], T["tab_story"], T["tab_problem_solver"]], index=3)
-
-
-# =========================================================
-# MAIN HEADER
-# =========================================================
-with st.container():
-    st.markdown('<div class="premium-header">', unsafe_allow_html=True)
-    st.markdown(f'<h1 style="text-align: center; color: {COLOR_HEADER};">{T["title_main"]}</h1>', unsafe_allow_html=True)
-    st.markdown(f'<p style="text-align: center; color: {BORDER_ACCENT}; font-size: 1.1em;">{T["version_tag"]}</p>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# =========================================================
-# CONTENT TABS 
+# NEW FUNCTIONS FOR WORD PROBLEM SOLVER
 # =========================================================
 
-# Tab 1: Function & Derivative (2D) 
-if selected_tab_title == T["tab_func"]:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.header(T["tab_func"])
-    
-    func_input = st.text_input(T["input_func"], "sin(x)")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        x_min = st.number_input(T["xmin"], value=-10.0)
-    with col2:
-        x_max = st.number_input(T["xmax"], value=10.0)
-    with col3:
-        n = st.number_input(T["samples"], value=400)
-
-    x_sym = sp.Symbol('x')
-    try:
-        f = sp.sympify(func_input)
-        df = sp.diff(f, x_sym)
-
-        st.subheader(T["sym_deriv"])
-        st.latex(sp.latex(df))
-
-        xs = np.linspace(x_min, x_max, int(n))
-        f_l = sp.lambdify(x_sym, f, "numpy")
-        df_l = sp.lambdify(x_sym, df, "numpy")
-
-        ys = f_l(xs)
-        dys = df_l(xs)
-
-        plt.style.use('dark_background' if st.session_state['theme'] == 'Dark' else 'default')
-        fig, ax = plt.subplots(1, 2, figsize=(10, 4))
-        
-        ax[0].plot(xs, ys, color=BORDER_ACCENT)
-        ax[0].set_title("f(x)", color=COLOR_TEXT)
-        ax[0].grid(True, alpha=0.5)
-
-        ax[1].plot(xs, dys, color="crimson")
-        ax[1].set_title("f'(x)", color=COLOR_TEXT)
-        ax[1].grid(True, alpha=0.5)
-        
-        for axis in ax:
-            axis.tick_params(colors=COLOR_TEXT)
-            axis.spines['left'].set_color(COLOR_TEXT)
-            axis.spines['bottom'].set_color(COLOR_TEXT)
-            axis.xaxis.label.set_color(COLOR_TEXT)
-            axis.yaxis.label.set_color(COLOR_TEXT)
-            
-        if st.session_state['mobile_opt_active']:
-            st.pyplot(fig, use_container_width=True) 
-        else:
-            st.pyplot(fig) 
-
-    except Exception as e:
-        st.error(tr(f"Kesalahan: {e}", f"Error: {e}"))
-
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Tab 2: 3D Surface Plot 
-elif selected_tab_title == T["tab_3d"]:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.header(T["tab_3d"])
-    
-    z_input = st.text_input(
-        tr("Masukkan z = f(x, y)", "Enter z = f(x, y)"),
-        "sin(sqrt(x**2+y**2))/sqrt(x**2+y**2)"
-    )
-
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        xmin = st.number_input("x-min", -6.0)
-    with col2:
-        xmax = st.number_input("x-max", 6.0)
-    with col3:
-        ymin = st.number_input("y-min", -6.0)
-    with col4:
-        ymax = st.number_input("y-max", 6.0)
-
-    samples = st.slider(T["samples"], 20, 100, 50)
-
-    x, y = sp.symbols('x y')
-    try:
-        z = sp.sympify(z_input)
-        z_l = sp.lambdify((x, y), z, "numpy")
-
-        X = np.linspace(xmin, xmax, samples)
-        Y = np.linspace(ymin, ymax, samples)
-        Xg, Yg = np.meshgrid(X, Y)
-        Zg = z_l(Xg, Yg)
-
-        template = 'plotly_dark' if st.session_state['theme'] == 'Dark' else 'plotly_white'
-        
-        fig = go.Figure(data=[go.Surface(x=Xg, y=Yg, z=Zg)])
-        fig.update_layout(height=600, template=template)
-
-        if st.session_state['mobile_opt_active']:
-            st.plotly_chart(fig, use_container_width=True, key='3d_plot_active')
-        else:
-            st.plotly_chart(fig, width=700, key='3d_plot_fixed') 
-
-    except Exception as e:
-        st.error(tr(f"Kesalahan: {e}", f"Error: {e}"))
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
-# Tab 3: Story-Based Solver (Optimasi F(x) Input)
-elif selected_tab_title == T["tab_story"]:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader(T["solver_title"])
-    st.write(T["story_example_intro"])
-
-    st.markdown("---")
-    
-    # --- Pilihan Jenis Soal Optimasi ---
-    problem_type = st.radio(
-        T["category"],
-        list(OPTS_CHOICES.keys()),
-        key="opt_category_radio"
-    )
-    
-    selected_key = OPTS_CHOICES[problem_type]
-    
-    st.markdown(f'<h3>{problem_type}</h3>', unsafe_allow_html=True)
-    
-    # --- AREA Optimization Solver (Generalized Input) ---
-    if selected_key == "AREA":
-        st.markdown(tr(
-            "Soal Contoh: Maksimalkan luas $A(x)$ dengan fungsi batasan yang telah disubstitusikan (misal: $A(x) = 60x - 2x^2$ dari masalah pagar). **Gunakan 'x' sebagai variabel.**", 
-            "Example Problem: Maximize area $A(x)$ with the substituted constraint function (e.g.: $A(x) = 60x - 2x^2$ from the fence problem). **Use 'x' as the variable.**"
-        ))
-        
-        A_func_str = st.text_input(
-            tr("Masukkan Fungsi Luas A(x) yang Dioptimalkan:", "Enter the Optimized Area Function A(x):"), 
-            value="60*x - 2*x**2", key="A_input"
-        )
-        
-        if st.button(tr("ANALISIS AREA PREMIUM", "ANALYZE AREA PREMIUM"), use_container_width=True, key="solve_area_button"):
-            A, dA_dx, x_opt, A_max, error = solve_generic_optimization(A_func_str)
-
-            st.markdown("---")
-            st.markdown(f'<h3>{T["opt_solution"]}</h3>', unsafe_allow_html=True)
-            
-            if error:
-                st.error(error)
-            elif x_opt is not None:
-                st.markdown('**1. Tentukan Fungsi Objektif (Fungsi yang Dioptimalkan):**')
-                st.latex(f"A(x) = {sp.latex(A)}")
-
-                st.markdown('**2. Cari Turunan Pertama $A\'(x)$ dan Samakan dengan Nol:**')
-                st.latex(f"A'(x) = {sp.latex(dA_dx)} = 0")
-
-                st.markdown('**3. Selesaikan untuk Titik Kritis (Nilai x Optimal):**')
-                st.latex(f"x = {sp.latex(x_opt)}")
-                
-                st.markdown("---")
-                st.subheader(tr("Visualisasi Optimasi", "Optimization Visualization"))
-                plot_optimization(A, x_opt, A_max, label=tr('Fungsi Luas A(x)', 'Area Function A(x)'))
-
-                st.info(
-                    tr(
-                        f"Luas maksimum $A_{{max}}$ adalah **{A_max}**.",
-                        f"The maximum area $A_{{max}}$ is **{A_max}**."
-                    )
-                )
-            else:
-                st.warning(tr("Tidak ditemukan solusi optimal. Pastikan fungsi menggunakan variabel 'x' dan memiliki solusi positif.", "No optimal solution found. Ensure the function uses variable 'x' and has a positive solution."))
-
-
-    # --- VOLUME Optimization Solver (Generalized Input) ---
-    elif selected_key == "VOLUME":
-        st.markdown(tr(
-            "Soal Contoh: Maksimalkan Volume $V(x)$ dengan fungsi batasan yang telah disubstitusikan (misal: $V(x) = (96x - x^3) / 4$ dari masalah kotak). **Gunakan 'x' sebagai variabel.**", 
-            "Example Problem: Maximize Volume $V(x)$ with the substituted constraint function (e.g.: $V(x) = (96x - x^3) / 4$ from the box problem). **Use 'x' as the variable.**"
-        ))
-        
-        V_func_str = st.text_input(
-            tr("Masukkan Fungsi Volume V(x) yang Dioptimalkan:", "Enter the Optimized Volume Function V(x):"), 
-            value="(96*x - x**3) / 4", key="V_input"
-        )
-        
-        if st.button(tr("ANALISIS VOLUME PREMIUM", "ANALYZE VOLUME PREMIUM"), use_container_width=True, key="solve_volume_button"):
-            V, dV_dx, x_opt, V_max, error = solve_generic_optimization(V_func_str)
-
-            st.markdown("---")
-            st.markdown(f'<h3>{T["opt_solution"]}</h3>', unsafe_allow_html=True)
-            
-            if error:
-                st.error(error)
-            elif x_opt is not None:
-                st.markdown('**1. Tentukan Fungsi Objektif (Fungsi yang Dioptimalkan):**')
-                st.latex(f"V(x) = {sp.latex(V)}")
-
-                st.markdown('**2. Cari Turunan Pertama $V\'(x)$ dan Samakan dengan Nol:**')
-                st.latex(f"V'(x) = {sp.latex(dV_dx)} = 0")
-                
-                st.markdown('**3. Selesaikan untuk Titik Kritis (Nilai x Optimal):**')
-                st.latex(f"x = {sp.latex(x_opt)}")
-
-                st.markdown("---")
-                st.subheader(tr("Visualisasi Optimasi", "Optimization Visualization"))
-                plot_optimization(V, x_opt, V_max, label=tr('Fungsi Volume V(x)', 'Volume Function V(x)'))
-                
-                st.info(
-                    tr(
-                        f"Volume maksimum $V_{{max}}$ adalah **{V_max}**.",
-                        f"The maximum volume $V_{{max}}$ is **{V_max}**."
-                    )
-                )
-            else:
-                st.warning(tr("Tidak ditemukan solusi optimal. Pastikan fungsi menggunakan variabel 'x' dan memiliki solusi positif.", "No optimal solution found. Ensure the function uses variable 'x' and has a positive solution."))
-
-
-    # --- PROFIT Optimization Solver (Cost/Price Input) ---
-    elif selected_key == "PROFIT":
-        st.markdown(tr(
-            "Soal Contoh: Maksimalkan Keuntungan $P(x)$ dari penjualan $x$ unit. Masukkan fungsi Biaya Total $C(x)$ dan Harga Jual per unit $p(x)$ (di mana $P(x) = x \cdot p(x) - C(x)$). **Gunakan 'x' sebagai variabel.**", 
-            "Example Problem: Maximize Profit $P(x)$ from selling $x$ units. Enter the Total Cost function $C(x)$ and Selling Price per unit $p(x)$ (where $P(x) = x \cdot p(x) - C(x)$). **Use 'x' as the variable.**"
-        ))
-        
-        x_sym = sp.Symbol('x', real=True, positive=True)
-        C_default = "1000 + 10 * x**2"
-        p_default = "500 - 5 * x"
-
-        st.markdown(f'**{T["opt_setup"]}**')
-        col_c, col_p = st.columns(2)
-        with col_c:
-             C_func_str = st.text_input(tr("Fungsi Biaya Total C(x):", "Total Cost Function C(x):"), 
-                                        value=C_default, key="C_input")
-        with col_p:
-             p_func_str = st.text_input(tr("Fungsi Harga Jual per unit p(x):", "Selling Price Function p(x):"), 
-                                        value=p_default, key="p_input")
-
-        if st.button(tr("ANALISIS PROFIT PREMIUM", "ANALYZE PROFIT PREMIUM"), use_container_width=True, key="solve_profit_button"):
-            try:
-                C_sym = sp.sympify(C_func_str)
-                p_sym = sp.sympify(p_func_str)
-                R_sym = x_sym * p_sym 
-                Profit_sym = R_sym - C_sym
-
-                Profit, dProfit_dx, x_opt, Profit_max, error = solve_generic_optimization(str(Profit_sym))
-
-                st.markdown("---")
-                st.markdown(f'<h3>{T["opt_solution"]}</h3>', unsafe_allow_html=True)
-                
-                if error:
-                    st.error(error)
-                elif x_opt is not None:
-                    st.markdown('**1. Tentukan Fungsi Objektif (Keuntungan):**')
-                    st.latex(f"P(x) = {sp.latex(Profit_sym)}")
-        
-                    st.markdown('**2. Cari Turunan Pertama $P\'(x)$ dan Samakan dengan Nol:**')
-                    st.latex(f"P'(x) = {sp.latex(dProfit_dx)} = 0")
-                    
-                    st.markdown('**3. Selesaikan untuk Titik Kritis (Kuantitas Optimal):**')
-                    st.latex(f"x = {sp.latex(x_opt)}")
-
-                    st.markdown("---")
-                    st.subheader(tr("Visualisasi Optimasi", "Optimization Visualization"))
-                    plot_optimization(Profit, x_opt, Profit_max, label=tr('Fungsi Keuntungan P(x)', 'Profit Function P(x)'))
-                        
-                    st.info(
-                        tr(
-                            f"Keuntungan maksimum $P_{{max}}$ adalah **{Profit_max}** pada kuantitas **{x_opt}** unit.",
-                            f"The maximum profit $P_{{max}}$ is **{Profit_max}** at a quantity of **{x_opt}** units."
-                        )
-                    )
-                else:
-                    st.warning(tr("Tidak ditemukan kuantitas optimal positif. Periksa fungsi input.", "No positive optimal quantity found. Check input functions."))
-
-            except Exception as e:
-                st.error(tr(f"Kesalahan dalam memproses fungsi: {e}", f"Error processing function: {e}"))
-
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Tab 4: Word Problem Assistant (NEW)
-elif selected_tab_title == T["tab_problem_solver"]:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.header(T["tab_problem_solver"])
-    
-    # --- Input Masalah dan Kategori ---
-    problem_text = st.text_area(T["problem_input"], 
-                                tr("Sebuah wadah berbentuk balok memiliki panjang 10, lebar 5, dan tinggi 3. Hitunglah volumenya.", 
-                                   "A box shaped as a cuboid has a length of 10, width of 5, and height of 3. Calculate its volume."))
-    
-    category_options = {
-        "FUNGSI & TURUNAN": "FUNGSI_DASAR",
-        "LUAS PERMUKAAN & KELILING": "LUAS_BIDANG",
-        "VOLUME BANGUN RUANG": "VOLUME",
-        "OPTIMASI (Nilai Maks/Min)": "OPTIMASI",
-        "INTEGRAL (Luas/Volume Rotasi)": "INTEGRAL",
+def get_related_formulas(category_key):
+    formulas = {
+        "FUNGSI_DASAR": [r"f'(x) = \frac{d}{dx} f(x)"],
+        "LUAS_BIDANG": [r"A = l \times w", r"P = 2(l + w)"],
+        "VOLUME": [r"V = l \times w \times h"],
+        "OPTIMASI": [r"f'(x) = 0"],
+        "INTEGRAL": [r"\int_a^b f(x) \, dx"],
     }
-    
-    selected_category_name = st.selectbox(T["solution_type"], list(category_options.keys()))
-    selected_category_key = category_options[selected_category_name]
-    
-    st.markdown("---")
-    
-    # --- Input Spesifik Sesuai Kategori ---
-    input_data = None
-    input_valid = False
-    
-    st.subheader(tr("📝 Input Data Kunci", "📝 Key Data Input"))
-    
-    if selected_category_key == "INTEGRAL":
-        col_f, col_a, col_b = st.columns([2, 1, 1])
-        with col_f:
-            f_str = st.text_input(T["input_func"], "x**2", key="integral_func_input")
-        with col_a:
-            a = st.number_input(T["integral_a"], value=0, key="integral_a_input")
-        with col_b:
-            b = st.number_input(T["integral_b"], value=2, key="integral_b_input")
-        input_data = (f_str, a, b)
-        input_valid = True
-        
-    elif selected_category_key == "LUAS_BIDANG":
-        input_data = st.text_input(T["area_setup"], "10, 5", key="area_input")
-        input_valid = True
-        
-    elif selected_category_key == "VOLUME":
-        input_data = st.text_input(tr("Masukkan dimensi (panjang, lebar, tinggi), pisahkan dengan koma:", "Enter dimensions (length, width, height), separate by comma:"), "10, 5, 3", key="volume_input")
-        input_valid = True
+    return formulas.get(category_key, [])
 
-    elif selected_category_key == "FUNGSI_DASAR":
-        input_data = st.text_input(tr("Masukkan Fungsi f(x) (untuk dicari turunan/propertinya):", "Enter Function f(x) (to find derivative/properties):"), "3*x**2 + 5*x - 7", key="func_basic_input")
-        input_valid = True
-        
-    elif selected_category_key == "OPTIMASI":
-        input_data = st.text_input(tr("Masukkan Fungsi f(x) yang dioptimasi (misal: 60*x - 2*x**2):", "Enter the function f(x) to be optimized (e.g.: 60*x - 2*x**2):"), "60*x - 2*x**2", key="opt_solver_input")
-        input_valid = True
-
-
-    if st.button(tr("SOLVE SOAL CERITA PREMIUM", "SOLVE PREMIUM WORD PROBLEM"), use_container_width=True, key="solve_word_problem_button"):
-        if input_valid:
-            # Panggil Solver
-            steps, summary_text, success = solve_word_problem(selected_category_key, input_data)
-            
-            st.markdown("---")
-            
-            # --- Tampilkan Rumus Terkait ---
-            st.subheader(T["formula_list"])
-            formulas = get_related_formulas(selected_category_key)
-            if formulas:
-                st.markdown(tr("**Beberapa Rumus yang Relevan dengan Kategori ini:**", "**Some Formulas Relevant to this Category:**"))
-                for formula in formulas:
-                    st.latex(formula)
-            else:
-                st.info(tr("Tidak ada rumus spesifik yang terdaftar untuk kategori ini.", "No specific formulas listed for this category."))
-
-            st.markdown("---")
-            
-            # --- Tampilkan Langkah Penyelesaian ---
-            st.subheader(T["step_by_step"])
-            for step in steps:
-                st.markdown(step)
-                
-            st.markdown("---")
-            
-            # --- Ringkasan Akhir ---
-            st.subheader(T["summary"])
-            if success:
-                st.success(summary_text)
-            else:
-                st.error(summary_text)
-
+def solve_word_problem(category_key, input_data):
+    steps = []
+    summary_text = ""
+    success = False
+    x_sym = sp.Symbol('x')
+    
+    if category_key == "FUNGSI_DASAR":
+        f_str = input_data
+        try:
+            f = sp.sympify(f_str)
+            df = sp.diff(f, x_sym)
+            steps.append(tr("**1. Fungsi yang diberikan:**", "**1. Given function:**"))
+            steps.append(f"$f(x) = {sp.latex(f)}$")
+            steps.append(tr("**2. Turunan pertama:**", "**2. First derivative:**"))
+            steps.append(f"$f'(x) = {sp.latex(df)}$")
+            summary_text = tr(f"Turunan dari f(x) adalah {sp.latex(df)}", f"The derivative of f(x) is {sp.latex(df)}")
+            success = True
+        except Exception as e:
+            summary_text = f"Error: {e}"
+    
+    elif category_key == "LUAS_BIDANG":
+        dims = input_data.split(',')
+        if len(dims) == 2:
+            try:
+                l, w = map(float, dims)
+                area = l * w
+                peri = 2 * (l + w)
+                steps.append(tr("**1. Dimensi yang diberikan:**", "**1. Given dimensions:**"))
+                steps.append(tr(f"Panjang = {l}, Lebar = {w}", f"Length = {l}, Width = {w}"))
+                steps.append(tr("**2. Luas:**", "**2. Area:**"))
+                steps.append(f"$A = {l} \\times {w} = {area}$")
+                steps.append(tr("**3. Keliling:**", "**3. Perimeter:**"))
+                steps.append(f"$P = 2({l} + {w}) = {peri}$")
+                summary_text = tr(f"Luas = {area}, Keliling = {peri}", f"Area = {area}, Perimeter = {peri}")
+                success = True
+            except ValueError:
+                summary_text = tr("Input tidak valid. Masukkan dua angka dipisah koma.", "Invalid input. Enter two numbers separated by comma.")
         else:
-            st.warning(tr("Mohon masukkan data input kunci yang valid untuk kategori yang dipilih.", "Please enter valid key input data for the selected category."))
-
-    st.markdown('</div>', unsafe_allow_html=True)
-# --- Akhir Tab 4 ---
+            summary_text = tr("Input tidak valid. Masukkan dua dimensi dipisah koma.", "Invalid input. Enter two dimensions separated by comma.")
+    
+    elif category_key == "VOLUME":
+        dims = input_data.split(',')
+        if len(dims) == 3:
+            try:
+                l, w, h = map(float, dims)
+                vol = l * w * h
+                steps.append(tr("**1. Dimensi yang diberikan:**", "**1. Given dimensions:**"))
+                steps.append(tr(f"Panjang = {l}, Lebar = {w}, Tinggi = {h}", f"Length = {l}, Width = {w}, Height = {h}"))
+                steps.append(tr("**2. Volume:**", "**2. Volume:**"))
+                steps.append(f"$V = {l} \\times {w} \\times {h} = {vol}$")
+                summary_text = tr(f"Volume = {vol}", f"Volume = {vol}")
+                success = True
+            except ValueError:
+                summary_text = tr("Input tidak valid. Masukkan tiga angka dipisah koma.", "Invalid input. Enter three numbers separated by comma.")
+        else:
+            summary_text = tr("Input tidak valid. Masukkan tiga dimensi dipisah koma.", "Invalid input. Enter three dimensions separated by comma.")
+    
+    elif category_key == "OPTIMASI":
+        f_str = input_data
+        try:
+            f, df_dx, x_opt, f_max, error = solve_generic_optimization(f_str)
+            if error:
+                summary_text = error
+            else:
+                steps.append(tr("**1. Fungsi yang dioptimalkan:**", "**1. Function to optimize:**"))
+                steps.append(f"$f(x) = {sp.latex(f)}$")
+                steps.append(tr("**2. Turunan pertama:**", "**2. First derivative:**"))
+                steps.append(f"$
